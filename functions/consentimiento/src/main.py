@@ -54,11 +54,15 @@ def main(context):
         return make_response(data, 200)
 
     elif method == "POST":
-        body = context.req.body.decode() if isinstance(context.req.body, bytes) else context.req.body
-        try:
-            data = json.loads(body)
-        except Exception as e:
-            return make_response({"error": "JSON inválido", "details": str(e)}, 400)
+        # Recibe el body correctamente, sea dict o string
+        if isinstance(context.req.body, (bytes, str)):
+            body = context.req.body.decode() if isinstance(context.req.body, bytes) else context.req.body
+            try:
+                data = json.loads(body)
+            except Exception as e:
+                return make_response({"error": "JSON inválido", "details": str(e)}, 400)
+        else:
+            data = context.req.body
         r = requests.post(
             f"{API_BASE}/consent/consentUser/save",
             headers=headers, cookies=cookies, json=data
