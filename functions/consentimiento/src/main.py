@@ -1,26 +1,33 @@
 import json
 import requests
 
+def make_response(body, status_code=200):
+    return {
+        "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+        },
+        "statusCode": status_code,
+        "body": json.dumps(body) if not isinstance(body, str) else body
+    }
+
 def main(context):
     API_BASE = "https://demos2.vu-one.com"
     API_KEY = "17532252-8942-3036-v5eR-YRy5dV5OtxYK"
     JSESSIONID = "D8D3DC4396DC313EEE1601EE2F8B6B2F"
-    
+
     headers = {
         "Content-Type": "application/json",
         "x-api-key": API_KEY
     }
     cookies = {"JSESSIONID": JSESSIONID}
-    
-    method = context.req.method
 
-    # CORS preflight
+    method = context.req.method.upper()
+
+    # CORS preflight (OPTIONS)
     if method == "OPTIONS":
-        response = context.res.json({})
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-        return response
+        return make_response({}, 200)
 
     if method == "GET":
         template_id = context.req.query.get("id", "2")
@@ -29,14 +36,9 @@ def main(context):
             headers=headers, cookies=cookies
         )
         if r1.status_code != 200:
-            response = context.res.json(
-                {"error": "Error obteniendo consentimiento", "details": r1.text},
-                status_code=500
+            return make_response(
+                {"error": "Error obteniendo consentimiento", "details": r1.text}, 500
             )
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-            return response
         data = r1.json()
         name = "CT-TOS-TANNER-CL"
         version = "1.0.1"
@@ -49,44 +51,23 @@ def main(context):
         else:
             legal_text = r2.json().get("legalText")
         data["legalText"] = legal_text
-        response = context.res.json(data)
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-        return response
+        return make_response(data, 200)
 
     elif method == "POST":
         body = context.req.body.decode() if isinstance(context.req.body, bytes) else context.req.body
         try:
             data = json.loads(body)
         except Exception as e:
-            response = context.res.json({"error": "JSON inválido", "details": str(e)}, status_code=400)
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-            return response
+            return make_response({"error": "JSON inválido", "details": str(e)}, 400)
         r = requests.post(
             f"{API_BASE}/consent/consentUser/save",
             headers=headers, cookies=cookies, json=data
         )
         if r.status_code != 200:
-            response = context.res.json(
-                {"error": "Error guardando consentimiento", "details": r.text},
-                status_code=500
+            return make_response(
+                {"error": "Error guardando consentimiento", "details": r.text}, 500
             )
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-            return response
-        response = context.res.json(r.json())
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-        return response
+        return make_response(r.json(), 200)
 
     else:
-        response = context.res.json({"error": "Método no soportado"}, status_code=405)
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-        return response
+        return make_response({"error": "Método no soportado"}, 405)
